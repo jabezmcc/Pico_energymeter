@@ -1,12 +1,9 @@
 '''
 Host code for Raspberry Pi Pico energy meter 
-Jabez McClelland
-
-Version 0.0.1 - first commit
+Jabez McClelland  
+6/19/2025 - Version 0.0.1 - first commit
 
 '''
-
-
 import sys
 import os
 import xlsxwriter
@@ -268,7 +265,6 @@ class Main(QMainWindow, Ui_MainWindow):
     def exit(self):
         sys.exit()
 
-
 def simpson(signal,dt):
     n = len(signal) #n must be odd!
     integral = (dt/3) * (signal[0] + 2*np.sum(signal[:n-2:2]) \
@@ -277,10 +273,6 @@ def simpson(signal,dt):
 
 def rotate(mylist,n):
     return mylist[n:] + mylist[:n]
-
-
-
-
 
 if __name__=="__main__":
     app = QApplication(sys.argv)
