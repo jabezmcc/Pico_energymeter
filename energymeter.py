@@ -30,10 +30,10 @@ vers = '0.0.1'
 
 port = "/dev/ttyACM0"
 baudrate = 115200
-ndata = 1001
+ndata = 801
 ncyc = 3
-c_volts = 24.315
-c_amps = 0.1725
+voltfact = 163.69
+curfact = 12.263
 
 
 class About(QAboutWindow, Ui_AboutWindow):
@@ -244,8 +244,8 @@ class Main(QMainWindow, Ui_MainWindow):
             for i  in range(ndata):
                 result = self.ser.read(2)
                 amps[i] = int.from_bytes(result,sys.byteorder)
-            volts = [163.45*(float(x) - sum(volts)/ndata)*3.3/65536. for x in volts]
-            amps = [-12.562*(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps]
+            volts = [voltfact*(float(x) - sum(volts)/ndata)*3.3/65536. for x in volts]
+            amps = [-curfact*(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps]
         else:
             for i in range(ndata):
                 volts[i]  = 169.99*(1 + 2*np.random.random_sample()/10.)*np.sin(2*np.pi*t[i]*60)
@@ -264,12 +264,6 @@ class Main(QMainWindow, Ui_MainWindow):
             
     def exit(self):
         sys.exit()
-
-def simpson(signal,dt):
-    n = len(signal) #n must be odd!
-    integral = (dt/3) * (signal[0] + 2*np.sum(signal[:n-2:2]) \
-            + 4*np.sum(signal[1:n-1:2]) + signal[n-1])
-    return integral
 
 def rotate(mylist,n):
     return mylist[n:] + mylist[:n]
