@@ -239,7 +239,6 @@
     <property name="title">
      <string>Help</string>
     </property>
-    <addaction name="actionInstructions"/>
     <addaction name="actionAbout"/>
    </widget>
    <addaction name="menuFile"/>

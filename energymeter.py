@@ -1,8 +1,7 @@
 '''
-Host code for Raspberry Pi Pico energy meter 
+Host code for Raspberry Pi Pico energy meter https://github.com/jabezmcc/Pico_energymeter
 Jabez McClelland  
-6/19/2025 - Version 0.0.1 - first commit
-
+6/19/2025 - Version 0.1 
 '''
 import sys
 import os
@@ -26,14 +25,15 @@ import matplotlib.pyplot as plt
 Ui_MainWindow, QMainWindow = loadUiType('energymeter.ui') 
 Ui_WaveformWindow, QWaveformWindow = loadUiType('waveform.ui')
 Ui_AboutWindow, QAboutWindow = loadUiType('AboutEnergymeter.ui')
-vers = '0.0.1' 
+vers = '0.1' 
 
+# Set up communications with Pico.  This is for Linux but is OS dependent so may need adjusting. 
 port = "/dev/ttyACM0"
 baudrate = 115200
-ndata = 801
-ncyc = 3
-voltfact = 163.69
-curfact = 12.263
+ndata = 801 # number of datapoints for waveform acquisition
+ncyc = 3  # number of 60 Hz cycles to acquire
+voltfact = 163.69 # calibration factor for voltage
+curfact = 12.263 # calibration factor for current
 
 
 class About(QAboutWindow, Ui_AboutWindow):
@@ -46,6 +46,7 @@ class About(QAboutWindow, Ui_AboutWindow):
         self.show()
 
     def show_license(self):
+        # This bit should work cross platform
         p = platform.system()
         try:
             if p == 'Linux':
@@ -61,7 +62,7 @@ class About(QAboutWindow, Ui_AboutWindow):
         self.close()
         
 class ShowWaveform(QWaveformWindow,Ui_WaveformWindow):
-    def __init__(self,wavedata):
+    def __init__(self,wavedata):  # wavedata is a three-element list of ndata-element lists: time, voltage and current 
         super(ShowWaveform,self).__init__()
         self.setupUi(self)
         Vcolor = 'blue'
@@ -127,6 +128,7 @@ class Main(QMainWindow, Ui_MainWindow):
         self.ax.set_ylim(0,100)
         self.ax.set_xlim(dt.datetime.now(),dt.datetime.now()+dt.timedelta(hours=2))
         self.rec_label.setText('')
+        # Try to connect to Pico.  If it fails, switch to simulation mode
         try:
             self.ser = serial.Serial(port, baudrate, timeout=1)
             self.dummy = False
@@ -142,15 +144,15 @@ class Main(QMainWindow, Ui_MainWindow):
             p = 100.0 + np.random.random_sample()
             avpower = '{:.1f}'.format(p)
         else:
-            self.ser.write(b'po')
+            self.ser.write(b'po') # This triggers Pico to send back the measured power. 
             time.sleep(0.5)
             avpower = self.ser.readline().decode('utf-8').strip()
             time.sleep(0.5)
- #           print(avpower)
         self.currentPower.setText(avpower+' W')
         return float(avpower)
         
     def start_data(self):
+        # Data acquisition is in a separate thread so we can still interact with the gui.
         x = threading.Thread(target=self.take_data, daemon=True)
         x.start()
         
@@ -196,9 +198,9 @@ class Main(QMainWindow, Ui_MainWindow):
             powers.append(current_power)
             avpowers.append(sum(powers)/len(powers))
             if count == 1:
-                energies.append(powers[0]*interval*0.001/3600.)
+                energies.append(powers[0]*interval*0.001/3600.) # converting W-s to kWh
             else:
-                energies.append(sum(powers)*interval*0.001/3600.)
+                energies.append(sum(powers)*interval*0.001/3600.) # converting W-s to kWh
             self.currentPower.setText("{:3.1f}".format(current_power)+' W')
             self.avgPower.setText("{:3.1f}".format(avpowers[-1])+' W')
             self.kWh.setText("{:3.3f}".format(energies[-1])+' kWh')
@@ -231,21 +233,24 @@ class Main(QMainWindow, Ui_MainWindow):
 
     def show_waveform(self):
         if not self.dummy:     
-            self.ser.write(b'wa')
+            self.ser.write(b'wa') # Triggers Pico to send the voltage array, then the current array
         volts = np.empty(ndata)
         amps = np.empty(ndata)
         dt = ncyc/60./ndata
         t = dt*np.arange(ndata)
         if not self.dummy:
+            # Read voltage array
             for i in range(ndata):
                 result = self.ser.read(2)
                 volts[i] = int.from_bytes(result,sys.byteorder)
-            time.sleep(0.05)            
+            time.sleep(0.05)
+            # Read current array            
             for i  in range(ndata):
                 result = self.ser.read(2)
                 amps[i] = int.from_bytes(result,sys.byteorder)
+            # Rescale the data
             volts = [voltfact*(float(x) - sum(volts)/ndata)*3.3/65536. for x in volts]
-            amps = [-curfact*(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps]
+            amps = [-curfact*(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps] # amps needs minus sign because of op amp inversion
         else:
             for i in range(ndata):
                 volts[i]  = 169.99*(1 + 2*np.random.random_sample()/10.)*np.sin(2*np.pi*t[i]*60)
@@ -264,9 +269,6 @@ class Main(QMainWindow, Ui_MainWindow):
             
     def exit(self):
         sys.exit()
-
-def rotate(mylist,n):
-    return mylist[n:] + mylist[:n]
 
 if __name__=="__main__":
     app = QApplication(sys.argv)

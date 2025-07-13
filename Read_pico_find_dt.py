@@ -1,3 +1,9 @@
+'''
+Timing determination code for Raspberry Pi Pico energy meter https://github.com/jabezmcc/Pico_energymeter
+Use this code on the host computer in conjunction with powmon_picocode_get_base_delay.py on the Pico
+Jabez McClelland  
+7/5/2025 - Version 0.1 
+'''
 import sys
 import serial
 import time
@@ -7,15 +13,14 @@ from matplotlib import pyplot as plt
 ndata = 801
 x = np.arange(ndata)
 
-
-
 def func(x,A,dt,phi):
     return A*np.sin(2*np.pi*60.*dt*x + phi)
 
+# Set up communications with Pico.  This is for Linux but is OS dependent so may need adjusting. 
 port = "/dev/ttyACM0"
 baudrate = 115200
 serial_connection = serial.Serial(port, baudrate)
-serial_connection.write(b'wa')
+serial_connection.write(b'wa') # Send request for waveform data
 volts = np.empty(ndata)
 amps = np.empty(ndata)
 for i in range(ndata):
@@ -25,9 +30,10 @@ time.sleep(0.05)
 for i  in range(ndata):
     result = serial_connection.read(2)
     amps[i] = int.from_bytes(result,sys.byteorder)
+# Scale data.  Note these scale factors are not important for dt measurment.
 volts = [163.45*(float(x) - sum(volts)/ndata)*3.3/65536. for x in volts]
+# amps not necessary, but Pico is expecting to send, so better ask for it anyway.
 amps = [-12.562*(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps]
-
 data = volts
 popt,pcov = curve_fit(func,x,data,p0=[163,5e-5,0],method='lm')
 dt_base = popt[1]

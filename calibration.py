@@ -1,7 +1,7 @@
 '''
-Calibration code for Raspberry Pi Pico energy meter 
+Calibration code for Raspberry Pi Pico energy meter https://github.com/jabezmcc/Pico_energymeter
 Jabez McClelland  
-7/5/2025 - Version 0.0.1 - first commit
+7/5/2025 - Version 0.1 
 
 '''
 import sys
@@ -22,15 +22,13 @@ from scipy.optimize import curve_fit
 Ui_MainWindow, QMainWindow = loadUiType('calibration.ui') 
 Ui_WaveformWindow, QWaveformWindow = loadUiType('waveform.ui')
 Ui_AboutWindow, QAboutWindow = loadUiType('AboutEnergymeterCalib.ui')
-vers = '0.0.1' 
+vers = '0.1' 
 
+# Set up communications with Pico.  This is for Linux but is OS dependent so may need adjusting. 
 port = "/dev/ttyACM0"
 baudrate = 115200
 ndata = 801
 ncyc = 3
-#voltfact = 163.45
-#curfact = 12.562
-
 
 class About(QAboutWindow, Ui_AboutWindow):
     def __init__(self):
@@ -57,7 +55,7 @@ class About(QAboutWindow, Ui_AboutWindow):
         self.close()
         
 class ShowWaveform(QWaveformWindow,Ui_WaveformWindow):
-    def __init__(self,wavedata):
+    def __init__(self,wavedata):  # wavedata is a three-element list of ndata-element lists: time, voltage and current 
         super(ShowWaveform,self).__init__()
         self.setupUi(self)
         Vcolor = 'blue'
@@ -152,7 +150,7 @@ class Main(QMainWindow, Ui_MainWindow):
             result = self.ser.read(2)
             amps[i] = int.from_bytes(result,sys.byteorder)
         volts = [(float(x) - sum(volts)/ndata)*3.3/65536. for x in volts]
-        amps = [-(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps]
+        amps = [-(float(x) - sum(amps)/ndata)*3.3/65536. for x in amps] #amps needs minus sign because of op amp inversion
         x = np.arange(ndata)
         v_popt,v_pcov = curve_fit(func,x,volts,p0=[1,0],method='lm')
         a_popt,a_pcov = curve_fit(func,x,amps,p0=[1,0],method='lm')
@@ -175,10 +173,6 @@ def simpson(signal,dt):
 
 def func(x,A,phi):
     return A*np.sin(2*np.pi*ncyc*x/ndata + phi)
-
-
-def rotate(mylist,n):
-    return mylist[n:] + mylist[:n]
 
 if __name__=="__main__":
     app = QApplication(sys.argv)

@@ -1,3 +1,10 @@
+'''
+MicroPython code for determining base delay in Raspberry Pi Pico when reading ADCs.
+Part of project https://github.com/jabezmcc/Pico_energymeter.
+Use this code on the Pico in conjunction with Read_pico_find_dt.py on the host.
+Version 0.1
+Jabez McCleland, July 2025
+'''
 from machine import ADC, Pin, SoftI2C
 from lyhlcd1602 import LCD
 import time

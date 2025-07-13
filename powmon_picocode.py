@@ -1,3 +1,13 @@
+
+'''
+MicroPython code for the Raspberry Pi Pico used for the appliance
+energy usage project https://github.com/jabezmcc/Pico_energymeter.
+Use this code on the Pico together with energymeter.py on the host computer.
+Version 0.1 Jabez McClelland, July 2025
+
+'''
+
+
 from machine import ADC, Pin, SoftI2C
 from lyhlcd1602 import LCD
 import time
@@ -6,7 +16,8 @@ import array
 import struct
 import select
 
-powfact = 5.208e-6
+powfact = 5.208e-6  # This is the scale factor determined by running the calibration procedure.  See Readme.md
+version = '0.1'
 
 def simpson(signal,dt):
     # integrates signal
@@ -34,7 +45,7 @@ led = Pin(25, Pin.OUT)
 
 # Set up 1602 LCD deisplay
 lcd = LCD(SoftI2C(scl=Pin(1), sda=Pin(0), freq=100000))
-lcd.puts("Powermeter 1.0")
+lcd.puts("Powermeter "+version)
 time.sleep_ms(4000)
 lcd.puts('                ')
 
@@ -52,7 +63,7 @@ dt = ncyc/60./ndata
 delay_us = 12 # Extra delay needed on top of base delay as determined by Read_pico_find_dt.py 
 volts = array.array('i', 0 for i in range(ndata))
 amps = array.array('i', 0 for i in range(ndata))
-nexpav = 5
+nexpav = 5 # Reduces noise in LCD readout
 expav_pow = get_power(volts,amps)
 while True:
     # Read data first to minimize delays
@@ -60,13 +71,12 @@ while True:
     expav_pow = power*2/(nexpav + 1) + expav_pow*(1 - 2/(nexpav +1)) 
     powerstring = '{:.1f}'.format(expav_pow)
     lcd.puts(powerstring+' W      ')    
- #   t0 = time.ticks_ms()
     if spoll.poll(10):
         led.value(1)
         instring = sys.stdin.buffer.read(2)       
-        if instring == b'po':
+        if instring == b'po': # Request was for a power reading
             print(powerstring)
-        elif instring == b'wa':
+        elif instring == b'wa': # Request was for a wafeform
             for i in range(ndata):
                 volts[i] = adc0.read_u16()
                 amps[i] = adc1.read_u16()
