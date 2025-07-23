@@ -63,14 +63,18 @@ dt = ncyc/60./ndata
 delay_us = 12 # Extra delay needed on top of base delay as determined by Read_pico_find_dt.py 
 volts = array.array('i', 0 for i in range(ndata))
 amps = array.array('i', 0 for i in range(ndata))
-nexpav = 5 # Reduces noise in LCD readout
+nexpav = 10 # Reduces noise in LCD readout
 expav_pow = get_power(volts,amps)
+count = 0
 while True:
+    count += 1
     # Read data first to minimize delays
     power = get_power(volts,amps)
     expav_pow = power*2/(nexpav + 1) + expav_pow*(1 - 2/(nexpav +1)) 
     powerstring = '{:.1f}'.format(expav_pow)
-    lcd.puts(powerstring+' W      ')    
+    if count == 10:
+        lcd.puts(powerstring+' W      ')
+        count = 0
     if spoll.poll(10):
         led.value(1)
         instring = sys.stdin.buffer.read(2)       
